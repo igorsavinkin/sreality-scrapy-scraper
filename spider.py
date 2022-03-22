@@ -66,8 +66,15 @@ class MySpider(scrapy.Spider):
                 print ( item['images'] )
 
                     
-            #for i in jsonresponse['items']:
-            #    item[i['name']] = i['value']            
+            for i in jsonresponse['items']:
+                if isinstance(i['value'] , list):
+                    item[i['name']]= ''
+                    for j in i['value']:
+                        item[i['name']] += j['value'] + ', '
+                    item[i['name']] = item[i['name']][:-2]   
+                else:
+                    item[i['name']] = i['value']
+                    
         except Exception as e:
             print ('Error: ' , e, ' url: ',   response.url  )           
         yield item  
