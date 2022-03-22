@@ -43,28 +43,27 @@ class MySpider(scrapy.Spider):
             item['DESCRIPTION'] = jsonresponse['text']['value']
             
             if jsonresponse['price_czk']['value']:
-                item['price'] =  jsonresponse['price_czk']['value']
+                item['PRICE'] =  jsonresponse['price_czk']['value']
             else:
-                item['price'] = ''
+                item['PRICE'] = ''
+            item['LONGITUDE'] = jsonresponse['map']['lon']
+            item['LATITUDE'] = jsonresponse['map']['lat']
+
+            item["ADDRESS"] = jsonresponse['locality']['value']
             # gather images
-            item['images'] = set()
+            item['IMAGES'] = set()
             
             for images in jsonresponse['_embedded']['images']:                 
                 if images['_links']['dynamicDown']:
-                    item['images'].add( images['_links']['dynamicDown']['href'])
+                    item['IMAGES'].add( images['_links']['dynamicDown']['href'])
                 if images['_links']['gallery']:
-                    item['images'].add(images['_links']['gallery']['href'])
+                    item['IMAGES'].add(images['_links']['gallery']['href'])
                 if images['_links']['self']:
-                    item['images'].add(images['_links']['self']['href'])
+                    item['IMAGES'].add(images['_links']['self']['href'])
                 if images['_links']['dynamicUp']:
-                    item['images'].add(images['_links']['dynamicUp']['href'])
+                    item['IMAGES'].add(images['_links']['dynamicUp']['href'])
                 if images['_links']['view']:
-                    item['images'].add(images['_links']['view']['href'])
-
-                        
-                print ("image of the item: ")
-                print ( item['images'] )
-
+                    item['IMAGES'].add(images['_links']['view']['href'])
                     
             for i in jsonresponse['items']:
                 if isinstance(i['value'] , list):
