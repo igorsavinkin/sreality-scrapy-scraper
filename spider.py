@@ -1,43 +1,52 @@
 import scrapy
 import json
 
-per_page = 5
-property_codes = { 1: 'apartment' , 2:'house' }
-deal_codes = { 1: 'sell' , 2: 'rent' }
-
 class MySpider(scrapy.Spider):
-    name = 'Real estate data'
-    max_pages = 2 # int(11300/60) + 1
+    name = 'Real estate data of srealty.cz'
+    #max_pages = 2
+    per_page = 100
     base_api_url = 'https://www.sreality.cz/api'
-    #logger.info('Max pages: ', max_pages)
+    property_codes = { 1: 'apartment' , 2:'house' }
+    deal_codes = { 1: 'sell' , 2: 'rent' } 
+    #count_URL = 'https://www.sreality.cz/api/cs/v2/estates/count'
+
+    ##● houses for rent: 548
+    ##● houses for sale: 9250    
     
-    start_urls = ['https://www.sreality.cz/api/cs/v2/estates?category_main_cb=2&category_type_cb=1&locality_country_id=10001&per_page=' + str(per_page) + '&page='+str(x)+''for x in range(1, max_pages)]
- 
+    ##● apartment for rent: 11108
+    ##● apartment for sale: 9769
+
+    houses_rent = ['https://www.sreality.cz/api/cs/v2/estates?category_main_cb=2&category_type_cb=2&locality_country_id=10001&per_page=' + str(100) + '&page='+str(x)+''for x in range(1, 10)]
+    houses_sell = ['https://www.sreality.cz/api/cs/v2/estates?category_main_cb=2&category_type_cb=1&locality_country_id=10001&per_page=' + str(100) + '&page='+str(x)+''for x in range(1, 110)]
+    apartments_rent = ['https://www.sreality.cz/api/cs/v2/estates?category_main_cb=1&category_type_cb=2&locality_country_id=10001&per_page=' + str(100) + '&page='+str(x)+''for x in range(1, 1100)]
+    apartments_sell = ['https://www.sreality.cz/api/cs/v2/estates?category_main_cb=1&category_type_cb=1&locality_country_id=10001&per_page=' + str(100) + '&page='+str(x)+''for x in range(1, 110)]
+    
+    start_urls =  houses_rent + houses_sell + apartments_rent + apartments_sell
+  
     def parse(self, response):
-         jsonresponse = response.json() # json.loads(response.text)
+         jsonresponse = response.json() 
 
          for item in jsonresponse["_embedded"]['estates']:
-            # yield { 'url': item['_links']['self']['href'] }
              yield scrapy.Request( self.base_api_url + item['_links']['self']['href'] ,
                           callback=self.parse_detail_page)
             
     def parse_detail_page(self, response):  
         jsonresponse = response.json()        
-        item = {} # empty dict item
+        item = {} # empty item as distionary
         try:             
-            # check if the property is an apartment or a house
+            # check if the property is an apartment (1) or a house (2)
             if jsonresponse['seo']['category_main_cb'] and 1 <= jsonresponse['seo']['category_main_cb'] <= 2:                
-                item['PROPERTY_CODE'] = property_codes[ jsonresponse['seo']['category_main_cb'] ]
-                item['DEAL_CODE'] = deal_codes[ jsonresponse['seo']['category_type_cb'] ]
+                item['PROPERTY_CODE'] = self.property_codes[ jsonresponse['seo']['category_main_cb'] ]
+                item['DEAL_CODE'] = self.deal_codes[ jsonresponse['seo']['category_type_cb'] ]
                 # house     -  category_main_cb=2
                 # apartment - category_main_cb=1
                 # pronájmu - rent     category_type_cb=2
                 # prodej   - sell     category_type_cb=1
             else:
-                return           
-            
+                return       
 
-            item['URL'] = response.url
+            item['API_URL'] = response.url
+            item['ID'] = response.url.split('/estates/')[1]
             item['meta'] = jsonresponse['meta_description']
             item['TITLE'] = jsonresponse['name']['value']
             item['DESCRIPTION'] = jsonresponse['text']['value']
@@ -50,6 +59,7 @@ class MySpider(scrapy.Spider):
             item['LATITUDE'] = jsonresponse['map']['lat']
 
             item["ADDRESS"] = jsonresponse['locality']['value']
+
             # gather images
             item['IMAGES'] = set()
             
@@ -64,7 +74,8 @@ class MySpider(scrapy.Spider):
                     item['IMAGES'].add(images['_links']['dynamicUp']['href'])
                 if images['_links']['view']:
                     item['IMAGES'].add(images['_links']['view']['href'])
-                    
+
+            # miscellenious items       
             for i in jsonresponse['items']:
                 if isinstance(i['value'] , list):
                     item[i['name']]= ''
@@ -75,5 +86,6 @@ class MySpider(scrapy.Spider):
                     item[i['name']] = i['value']
                     
         except Exception as e:
-            print ('Error: ' , e, ' url: ',   response.url  )           
+            print ('Error: ' , e, '. for url: ',   response.url  )
+            
         yield item  
